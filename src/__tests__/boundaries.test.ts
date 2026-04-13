@@ -33,11 +33,14 @@ describe("boundaries.number", () => {
     expect(() => boundaries.number({ min: 100, max: 0 })).toThrow("min (100) must be <= max (0)");
   });
 
-  it("deduplicates boundary when min === max", () => {
+  it("boundary only contains values within [min, max] when min === max", () => {
     const r = boundaries.number({ min: 5, max: 5 });
-    // min, min+1, max-1, max = [5, 6, 4, 5] → dedupe → [5, 6, 4]
-    const unique = new Set(r.boundary);
-    expect(unique.size).toBe(r.boundary.length);
+    // min+1=6 and max-1=4 are outside range, only [5] should remain
+    expect(r.boundary).toEqual([5]);
+    for (const v of r.boundary) {
+      expect(v as number).toBeGreaterThanOrEqual(5);
+      expect(v as number).toBeLessThanOrEqual(5);
+    }
   });
 
   it("deduplicates boundary for small ranges (min+1 === max)", () => {
@@ -266,6 +269,13 @@ describe("boundaries.password", () => {
     const r = boundaries.password({ minLength: 0 });
     const unique = new Set(r.invalid.map(String));
     expect(unique.size).toBe(r.invalid.length);
+  });
+
+  it("minLength=0: empty string is in boundary, not invalid", () => {
+    const r = boundaries.password({ minLength: 0 });
+    // Empty string is a valid boundary (at minLength), not invalid
+    expect(r.invalid).not.toContain("");
+    expect(r.boundary).toContain("");
   });
 });
 

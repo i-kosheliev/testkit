@@ -53,7 +53,7 @@ boundaries.number({ min: 0, max: 120 })
 //   boundary: [0, 1, 119, 120] }
 
 boundaries.string({ minLength: 1, maxLength: 50 })
-// { valid: ['hello'],
+// { valid: ['aaa...'],   // midpoint length (25 chars)
 //   invalid: ['', 'x'.repeat(51)],
 //   boundary: ['x', 'x'.repeat(50)] }
 

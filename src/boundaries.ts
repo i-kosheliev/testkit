@@ -36,7 +36,9 @@ function numberBoundaries(opts: NumberOptions = {}): BoundaryResult {
     throw new RangeError(`boundaries.number(): min (${min}) must be <= max (${max})`);
   }
 
-  const boundary = dedupe([min, min + 1, max - 1, max]);
+  // Only include min+1 and max-1 in boundary if they're within the valid range
+  const rawBoundary = [min, min + 1, max - 1, max];
+  const boundary = dedupe(rawBoundary.filter((v) => v >= min && v <= max));
 
   return {
     valid: [Math.floor((min + max) / 2)],
@@ -186,7 +188,10 @@ function passwordBoundaries(opts: PasswordOptions = {}): BoundaryResult {
     throw new RangeError(`boundaries.password(): minLength (${minLen}) must be <= maxLength (${maxLen})`);
   }
 
-  const invalid: unknown[] = [""];
+  const invalid: unknown[] = [];
+  if (minLen > 0) {
+    invalid.push("");
+  }
   if (minLen > 1) {
     invalid.push("x".repeat(minLen - 1));
   }
