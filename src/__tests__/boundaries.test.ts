@@ -51,9 +51,27 @@ describe("boundaries.number", () => {
 
   it("handles float ranges without duplicate boundaries", () => {
     const r = boundaries.number({ min: 0.5, max: 1.5 });
-    // [0.5, 1.5, 0.5, 1.5] → dedupe → [0.5, 1.5]
     const unique = new Set(r.boundary);
     expect(unique.size).toBe(r.boundary.length);
+  });
+
+  it("handles min=0 max=0 degenerate case", () => {
+    const r = boundaries.number({ min: 0, max: 0 });
+    expect(r.valid).toEqual([0]);
+    expect(r.boundary).toEqual([0]);
+    expect(r.invalid).toContain(-1);
+    expect(r.invalid).toContain(1);
+  });
+
+  it("calculates midpoint correctly for odd ranges", () => {
+    const r = boundaries.number({ min: 0, max: 3 });
+    expect(r.valid).toEqual([1]); // Math.floor(1.5) = 1
+  });
+
+  it("deduplicates when min+1 equals max-1", () => {
+    const r = boundaries.number({ min: 0, max: 2 });
+    // raw [0, 1, 1, 2] → dedupe → [0, 1, 2]
+    expect(r.boundary).toEqual([0, 1, 2]);
   });
 });
 
@@ -95,6 +113,28 @@ describe("boundaries.string", () => {
   it("deduplicates boundary when minLength === maxLength", () => {
     const r = boundaries.string({ minLength: 5, maxLength: 5 });
     expect(r.boundary).toEqual(["x".repeat(5)]);
+  });
+
+  it("maxLength: 0 boundary is deduplicated", () => {
+    const r = boundaries.string({ minLength: 0, maxLength: 0 });
+    expect(r.boundary).toEqual([""]);
+  });
+
+  it("throws on extremely large maxLength (OOM guard)", () => {
+    expect(() => boundaries.string({ maxLength: 100_000_000 })).toThrow(RangeError);
+    expect(() => boundaries.string({ maxLength: 100_000_000 })).toThrow("exceeds max");
+  });
+
+  it("works with only minLength specified", () => {
+    const r = boundaries.string({ minLength: 5 });
+    expect((r.valid[0] as string).length).toBeGreaterThanOrEqual(5);
+    expect((r.valid[0] as string).length).toBeLessThanOrEqual(255);
+  });
+
+  it("works with only maxLength specified", () => {
+    const r = boundaries.string({ maxLength: 10 });
+    expect((r.valid[0] as string).length).toBeGreaterThanOrEqual(1);
+    expect((r.valid[0] as string).length).toBeLessThanOrEqual(10);
   });
 });
 
@@ -157,6 +197,26 @@ describe("boundaries.date", () => {
     const unique = new Set(r.boundary);
     expect(unique.size).toBe(r.boundary.length);
   });
+
+  it("works with only min specified", () => {
+    const r = boundaries.date({ min: "2050-01-01" });
+    expect(r.boundary).toContain("2050-01-01");
+    expect(r.valid.length).toBe(1);
+  });
+
+  it("works with only max specified", () => {
+    const r = boundaries.date({ max: "2025-06-30" });
+    expect(r.boundary).toContain("2025-06-30");
+    expect(r.valid.length).toBe(1);
+  });
+
+  it("deduplicates boundary for 2-day range", () => {
+    const r = boundaries.date({ min: "2025-06-15", max: "2025-06-16" });
+    // min, min+1=max, max-1=min, max → dedupes
+    const unique = new Set(r.boundary);
+    expect(unique.size).toBe(r.boundary.length);
+    expect(r.boundary.length).toBe(2);
+  });
 });
 
 describe("boundaries.boolean", () => {
@@ -195,6 +255,12 @@ describe("boundaries.enum", () => {
 
   it("handles empty values", () => {
     const r = boundaries.enum({ values: [] });
+    expect(r.valid).toEqual([]);
+    expect(r.invalid).toEqual(["", null]);
+  });
+
+  it("handles undefined values (JS consumer)", () => {
+    const r = boundaries.enum({ values: undefined as unknown as string[] });
     expect(r.valid).toEqual([]);
     expect(r.invalid).toEqual(["", null]);
   });
@@ -291,9 +357,33 @@ describe("boundaries.password", () => {
 
   it("minLength=0: empty string is in boundary, not invalid", () => {
     const r = boundaries.password({ minLength: 0 });
-    // Empty string is a valid boundary (at minLength), not invalid
     expect(r.invalid).not.toContain("");
     expect(r.boundary).toContain("");
+  });
+
+  it("minLength=0 maxLength=0: valid is empty string", () => {
+    const r = boundaries.password({ minLength: 0, maxLength: 0 });
+    expect(r.valid[0]).toBe("");
+    expect(r.boundary).toEqual([""]);
+  });
+
+  it("buildPassword at exact base length (minLength=4)", () => {
+    const r = boundaries.password({ minLength: 4, maxLength: 4 });
+    const pw = r.valid[0] as string;
+    expect(pw).toHaveLength(4);
+    // Should contain mixed chars
+    expect(pw).toMatch(/[A-Z]/);
+    expect(pw).toMatch(/[a-z]/);
+    expect(pw).toMatch(/[0-9]/);
+    expect(pw).toMatch(/[^a-zA-Z0-9]/);
+  });
+
+  it("short passwords (len < 4) have limited character classes", () => {
+    // This is expected: you can't fit 4 character classes in 1-3 chars
+    const r1 = boundaries.password({ minLength: 1, maxLength: 1 });
+    expect((r1.valid[0] as string)).toHaveLength(1);
+    const r3 = boundaries.password({ minLength: 3, maxLength: 3 });
+    expect((r3.valid[0] as string)).toHaveLength(3);
   });
 });
 
@@ -312,6 +402,20 @@ describe("boundaries.phone", () => {
     const r = boundaries.phone();
     expect(r.invalid).toContain("");
     expect(r.invalid).toContain("abc");
+    expect(r.invalid).toContain("123");
+    expect(r.invalid).toContain("++1234567890");
+  });
+
+  it("includes boundary values for international format", () => {
+    const r = boundaries.phone();
+    expect(r.boundary).toContain("+1000000");
+    expect(r.boundary).toContain("+999999999999999");
+  });
+
+  it("includes boundary values for US format", () => {
+    const r = boundaries.phone({ format: "us" });
+    expect(r.boundary).toContain("2001000000");
+    expect(r.boundary).toContain("9999999999");
   });
 });
 

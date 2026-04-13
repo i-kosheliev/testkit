@@ -10,18 +10,16 @@ import type {
 } from "./types";
 
 /** Remove duplicate values from an array (handles NaN correctly). */
+const NAN_SENTINEL = Symbol("NaN");
+
 function dedupe(arr: unknown[]): unknown[] {
   const seen = new Set<unknown>();
   const result: unknown[] = [];
   for (const v of arr) {
-    // NaN !== NaN, so track it separately
-    if (typeof v === "number" && isNaN(v)) {
-      if (!seen.has("__NaN__")) {
-        seen.add("__NaN__");
-        result.push(v);
-      }
-    } else if (!seen.has(v)) {
-      seen.add(v);
+    // NaN !== NaN, so use a Symbol sentinel to track it
+    const key = (typeof v === "number" && isNaN(v)) ? NAN_SENTINEL : v;
+    if (!seen.has(key)) {
+      seen.add(key);
       result.push(v);
     }
   }
@@ -47,6 +45,8 @@ function numberBoundaries(opts: NumberOptions = {}): BoundaryResult {
   };
 }
 
+const MAX_STRING_LENGTH = 10_000_000; // 10 MB guard against OOM
+
 function stringBoundaries(opts: StringOptions = {}): BoundaryResult {
   const minLen = opts.minLength ?? 1;
   const maxLen = opts.maxLength ?? 255;
@@ -56,6 +56,9 @@ function stringBoundaries(opts: StringOptions = {}): BoundaryResult {
   }
   if (minLen > maxLen) {
     throw new RangeError(`boundaries.string(): minLength (${minLen}) must be <= maxLength (${maxLen})`);
+  }
+  if (maxLen > MAX_STRING_LENGTH) {
+    throw new RangeError(`boundaries.string(): maxLength (${maxLen}) exceeds max of ${MAX_STRING_LENGTH}`);
   }
 
   // Generate a valid string that respects the constraints

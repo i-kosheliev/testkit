@@ -75,9 +75,22 @@ describe("testEach", () => {
     expect(rows.some(([label]) => label.includes("(undefined)"))).toBe(true);
   });
 
+  it("formats Infinity as (Infinity)", () => {
+    const rows = testEach(boundaries.number());
+    expect(rows.some(([label]) => label.includes("(Infinity)"))).toBe(true);
+  });
+
   it("formats -Infinity as (-Infinity)", () => {
     const rows = testEach(boundaries.number());
     expect(rows.some(([label]) => label.includes("(-Infinity)"))).toBe(true);
+  });
+
+  it("handles empty valid/boundary arrays from enum", () => {
+    const r = boundaries.enum({ values: [] });
+    // valid=[], boundary=[], only invalid has values
+    const rows = testEach(r);
+    expect(rows.length).toBe(2); // "" and null from invalid
+    expect(rows.every(([, , expected]) => expected === false)).toBe(true);
   });
 
   it("works with all boundary types", () => {
@@ -85,9 +98,12 @@ describe("testEach", () => {
       boundaries.number(),
       boundaries.string(),
       boundaries.email(),
+      boundaries.date(),
       boundaries.boolean(),
       boundaries.enum({ values: ["a", "b"] }),
       boundaries.url(),
+      boundaries.password(),
+      boundaries.phone(),
       boundaries.uuid(),
     ];
 

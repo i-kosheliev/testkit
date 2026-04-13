@@ -153,4 +153,30 @@ describe("detectDuplicates", () => {
     expect(r.pairs.length).toBeGreaterThan(0);
     expect(r.pairs[0].similarity).toBeGreaterThanOrEqual(0.6);
   });
+
+  it("handles descriptions with only stop words (empty token sets)", () => {
+    const r = detectDuplicates(["the is a and", "was were be been"]);
+    // All tokens are stop words → empty sets → similarity 0
+    expect(r.pairs).toHaveLength(0);
+  });
+
+  it("handles descriptions with only 1-char words", () => {
+    const r = detectDuplicates(["a b c d e", "a b c d e"]);
+    // All tokens filtered (length > 1) → empty sets
+    expect(r.pairs).toHaveLength(0);
+  });
+
+  it("handles numeric tokens in descriptions", () => {
+    const r = detectDuplicates([
+      "test case 123 scenario",
+      "test case 123 scenario",
+    ]);
+    expect(r.pairs).toHaveLength(1);
+    expect(r.pairs[0].similarity).toBe(1);
+  });
+
+  it("allows exactly 10,000 items", () => {
+    const items = Array.from({ length: 10_000 }, (_, i) => `unique description ${i}`);
+    expect(() => detectDuplicates(items, { threshold: 0.99 })).not.toThrow();
+  });
 });
