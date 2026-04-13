@@ -7,8 +7,11 @@
  * missing assertions, and other quality issues.
  */
 
-import { readFileSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import { resolve, isAbsolute } from "node:path";
+
+/** Max file size to read (5MB) — prevents OOM on huge generated files */
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
 import { discoverTestFiles, getRelativePath } from "./scanner/file-discovery";
 import { parseFile } from "./scanner/ast-parser";
 import { extractTests } from "./scanner/test-extractor";
@@ -171,6 +174,16 @@ function analyzeFile(filePath: string, rootDir: string, options: ScanOptions): F
 
   let source: string;
   try {
+    const stat = statSync(filePath);
+    if (stat.size > MAX_FILE_SIZE) {
+      return {
+        filePath,
+        relativePath,
+        tests: [],
+        codeIssues: [],
+        parseError: `File too large (${(stat.size / 1024 / 1024).toFixed(1)}MB > 5MB limit)`,
+      };
+    }
     source = readFileSync(filePath, "utf-8");
   } catch {
     return {

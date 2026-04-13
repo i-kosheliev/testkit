@@ -20,4 +20,9 @@ describe("API Integration", () => {
     const id = Math.random().toString(36);
     expect(id).toBeTruthy();
   });
+
+  it("should use environment config", () => {
+    const apiUrl = process.env.API_URL;
+    expect(apiUrl).toBeDefined();
+  });
 });

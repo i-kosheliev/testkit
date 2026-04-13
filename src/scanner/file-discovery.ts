@@ -1,4 +1,4 @@
-import { readdirSync, statSync } from "node:fs";
+import { readdirSync, statSync, realpathSync } from "node:fs";
 import { join, relative, extname, basename } from "node:path";
 
 /** Directories to always skip */
@@ -42,7 +42,30 @@ export function discoverTestFiles(rootDir: string, customPattern?: string): stri
   return files.sort();
 }
 
-function walkDir(dir: string, rootDir: string, files: string[], pattern: RegExp | null): void {
+/** Max recursion depth to prevent stack overflow on deeply nested dirs */
+const MAX_DEPTH = 50;
+
+function walkDir(
+  dir: string,
+  rootDir: string,
+  files: string[],
+  pattern: RegExp | null,
+  visited: Set<string> = new Set(),
+  depth: number = 0
+): void {
+  if (depth > MAX_DEPTH) return;
+
+  // Resolve real path to detect symlink cycles
+  let realPath: string;
+  try {
+    realPath = realpathSync(dir);
+  } catch {
+    return; // Broken symlink or permission denied
+  }
+
+  if (visited.has(realPath)) return; // Symlink cycle detected
+  visited.add(realPath);
+
   let entries;
   try {
     entries = readdirSync(dir, { withFileTypes: true });
@@ -58,7 +81,7 @@ function walkDir(dir: string, rootDir: string, files: string[], pattern: RegExp 
 
     if (entry.isDirectory()) {
       if (EXCLUDED_DIRS.has(entry.name)) continue;
-      walkDir(fullPath, rootDir, files, pattern);
+      walkDir(fullPath, rootDir, files, pattern, visited, depth + 1);
     } else if (entry.isFile()) {
       if (isTestFile(entry.name, pattern)) {
         files.push(fullPath);

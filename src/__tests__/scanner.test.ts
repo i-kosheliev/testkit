@@ -146,6 +146,15 @@ describe("code-analyzer", () => {
     expect(randomIssue).toBeDefined();
   });
 
+  it("detects process.env access in test body", () => {
+    const ast = parseFixture("flaky.test.ts")!;
+    const issues = analyzeCode(ast);
+
+    const envIssue = issues.find((i) => i.message.includes("process.env"));
+    expect(envIssue).toBeDefined();
+    expect(envIssue!.type).toBe("flaky-code");
+  });
+
   it("detects missing assertions (no expect)", () => {
     const ast = parseFixture("quality-issues.test.ts")!;
     const issues = analyzeCode(ast);

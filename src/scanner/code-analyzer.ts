@@ -53,7 +53,7 @@ const FLAKY_PATTERNS: FlakyPattern[] = [
     suggestion: "Mock HTTP calls with jest.mock, msw, or nock",
   },
   {
-    match: (n) => isMemberCall(n, "process", "env"),
+    match: (n) => isMemberAccess(n, "process", "env"),
     message: "process.env access in test — environment dependency",
     suggestion: "Use .env.test with fixed values or jest.replaceProperty",
   },
