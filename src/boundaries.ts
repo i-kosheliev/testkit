@@ -203,21 +203,25 @@ function passwordBoundaries(opts: PasswordOptions = {}): BoundaryResult {
     "NoDigits!!abc",
   );
 
-  // Build boundary passwords that actually have the target length.
-  // Pattern: uppercase fill + "a1!" suffix (3 chars).
-  const suffix = "a1!";
-  const buildBoundary = (targetLen: number): string => {
+  // Build a password of exact target length with mixed character classes.
+  const buildPassword = (targetLen: number): string => {
     if (targetLen <= 0) return "";
-    if (targetLen <= suffix.length) return suffix.slice(0, targetLen);
-    return "A".repeat(targetLen - suffix.length) + suffix;
+    // Ensure uppercase + lowercase + digit + special char when length allows
+    const base = "Aa1!";
+    if (targetLen <= base.length) return base.slice(0, targetLen);
+    return "A".repeat(targetLen - base.length) + base;
   };
 
+  // Generate a valid password that respects the constraints
+  const validLen = Math.max(minLen, Math.min(maxLen, Math.floor((minLen + maxLen) / 2)));
+  const validPassword = buildPassword(validLen);
+
   return {
-    valid: ["P@ssw0rd!2025", "Str0ng#Pass"],
+    valid: [validPassword],
     invalid: dedupe(invalid),
     boundary: dedupe([
-      buildBoundary(minLen),
-      buildBoundary(maxLen),
+      buildPassword(minLen),
+      buildPassword(maxLen),
     ]),
   };
 }

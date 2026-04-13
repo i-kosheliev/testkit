@@ -229,6 +229,24 @@ describe("boundaries.password", () => {
     const r = boundaries.password();
     expect(r.valid.length).toBeGreaterThan(0);
     expect(r.invalid).toContain("");
+    // Valid password respects default constraints
+    const validPw = r.valid[0] as string;
+    expect(validPw.length).toBeGreaterThanOrEqual(8);
+    expect(validPw.length).toBeLessThanOrEqual(128);
+  });
+
+  it("valid password respects custom constraints", () => {
+    const r = boundaries.password({ minLength: 20, maxLength: 30 });
+    const validPw = r.valid[0] as string;
+    expect(validPw.length).toBeGreaterThanOrEqual(20);
+    expect(validPw.length).toBeLessThanOrEqual(30);
+  });
+
+  it("valid password respects small constraints", () => {
+    const r = boundaries.password({ minLength: 2, maxLength: 4 });
+    const validPw = r.valid[0] as string;
+    expect(validPw.length).toBeGreaterThanOrEqual(2);
+    expect(validPw.length).toBeLessThanOrEqual(4);
   });
 
   it("includes common weakness patterns as invalid", () => {
