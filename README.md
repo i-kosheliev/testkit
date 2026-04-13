@@ -73,7 +73,7 @@ Score a test case for flakiness risk **before** you automate it. Detects 11 risk
 import { flaky } from '@iklab/testkit';
 
 flaky('Wait 3 seconds then check if email arrived')
-// { score: 6,
+// { score: 5,
 //   risks: ['Timing dependency', 'Email/notification'],
 //   suggestions: ['Use waitFor/polling instead of fixed sleep',
 //                  'Mock email service in tests'] }
@@ -116,13 +116,13 @@ Detect duplicate or overlapping test descriptions using Jaccard similarity.
 import { detectDuplicates } from '@iklab/testkit';
 
 detectDuplicates([
-  'Login with valid credentials',
+  'Verify user login works correctly',
   'Submit form with empty fields',
-  'Login with valid username and password',
+  'Verify user login works',
 ])
-// { pairs: [{ indexA: 0, indexB: 2, similarity: 0.71,
-//             textA: 'Login with valid credentials',
-//             textB: 'Login with valid username and password' }],
+// { pairs: [{ indexA: 0, indexB: 2, similarity: 0.8,
+//             textA: 'Verify user login works correctly',
+//             textB: 'Verify user login works' }],
 //   threshold: 0.6 }
 ```
 
