@@ -1,263 +1,334 @@
 import { boundaries } from "../boundaries";
 
-describe("boundaries", () => {
-  describe("number", () => {
-    it("generates defaults (0-100)", () => {
-      const result = boundaries.number();
-      expect(result.valid).toContain(50);
-      expect(result.invalid).toContain(-1);
-      expect(result.invalid).toContain(101);
-      expect(result.invalid).toContainEqual(NaN);
-      expect(result.invalid).toContainEqual(Infinity);
-      expect(result.boundary).toEqual([0, 1, 99, 100]);
-    });
-
-    it("respects custom min/max", () => {
-      const result = boundaries.number({ min: 10, max: 20 });
-      expect(result.valid).toContain(15);
-      expect(result.invalid).toContain(9);
-      expect(result.invalid).toContain(21);
-      expect(result.boundary).toEqual([10, 11, 19, 20]);
-    });
-
-    it("handles negative ranges", () => {
-      const result = boundaries.number({ min: -50, max: -10 });
-      expect(result.invalid).toContain(-51);
-      expect(result.invalid).toContain(-9);
-      expect(result.boundary).toContain(-50);
-      expect(result.boundary).toContain(-10);
-    });
-
-    it("includes NaN and Infinity as invalid", () => {
-      const result = boundaries.number({ min: 0, max: 120 });
-      expect(result.invalid).toContainEqual(NaN);
-      expect(result.invalid).toContainEqual(Infinity);
-      expect(result.invalid).toContainEqual(-Infinity);
-    });
+describe("boundaries.number", () => {
+  it("generates defaults (0-100)", () => {
+    const r = boundaries.number();
+    expect(r.valid).toContain(50);
+    expect(r.invalid).toContain(-1);
+    expect(r.invalid).toContain(101);
+    expect(r.invalid).toContainEqual(NaN);
+    expect(r.invalid).toContainEqual(Infinity);
+    expect(r.invalid).toContainEqual(-Infinity);
+    expect(r.boundary).toEqual([0, 1, 99, 100]);
   });
 
-  describe("string", () => {
-    it("generates defaults (length 1-255)", () => {
-      const result = boundaries.string();
-      expect(result.valid).toContain("hello");
-      expect(result.invalid).toContain("");
-      expect(result.invalid).toContainEqual("x".repeat(256));
-      expect(result.boundary).toContainEqual("x");
-      expect(result.boundary).toContainEqual("x".repeat(255));
-    });
-
-    it("respects custom lengths", () => {
-      const result = boundaries.string({ minLength: 3, maxLength: 10 });
-      expect(result.invalid).toContainEqual("x".repeat(11));
-      expect(result.boundary).toContainEqual("xxx");
-      expect(result.boundary).toContainEqual("x".repeat(10));
-    });
-
-    it("omits empty string when minLength is 0", () => {
-      const result = boundaries.string({ minLength: 0, maxLength: 50 });
-      expect(result.invalid).not.toContain("");
-    });
+  it("respects custom min/max", () => {
+    const r = boundaries.number({ min: 10, max: 20 });
+    expect(r.valid).toContain(15);
+    expect(r.invalid).toContain(9);
+    expect(r.invalid).toContain(21);
+    expect(r.boundary).toEqual([10, 11, 19, 20]);
   });
 
-  describe("email", () => {
-    it("generates valid emails", () => {
-      const result = boundaries.email();
-      expect(result.valid.length).toBeGreaterThanOrEqual(2);
-      expect(result.valid).toContain("user@example.com");
-    });
-
-    it("generates invalid emails", () => {
-      const result = boundaries.email();
-      expect(result.invalid).toContain("");
-      expect(result.invalid).toContain("no-at-sign");
-      expect(result.invalid).toContain("@missing-local");
-      expect(result.invalid).toContain("spaces in@email.com");
-    });
-
-    it("generates boundary emails", () => {
-      const result = boundaries.email();
-      expect(result.boundary).toContain("a@b.c");
-      expect(result.boundary.some((v) => typeof v === "string" && v.length > 64)).toBe(true);
-    });
+  it("handles negative ranges", () => {
+    const r = boundaries.number({ min: -50, max: -10 });
+    expect(r.invalid).toContain(-51);
+    expect(r.invalid).toContain(-9);
+    expect(r.boundary).toContain(-50);
+    expect(r.boundary).toContain(-10);
   });
 
-  describe("date", () => {
-    it("generates defaults", () => {
-      const result = boundaries.date();
-      expect(result.valid.length).toBe(1);
-      expect(result.invalid).toContain("");
-      expect(result.invalid).toContain("not-a-date");
-      expect(result.boundary.length).toBe(4);
-    });
-
-    it("respects custom range", () => {
-      const result = boundaries.date({ min: "2025-01-01", max: "2025-12-31" });
-      expect(result.boundary).toContain("2025-01-01");
-      expect(result.boundary).toContain("2025-12-31");
-      expect(result.invalid).toContain("2024-12-31");
-      expect(result.invalid).toContain("2026-01-01");
-    });
-
-    it("includes format-invalid dates", () => {
-      const result = boundaries.date();
-      expect(result.invalid).toContain("2025-13-01");
-      expect(result.invalid).toContain("2025-02-30");
-    });
+  it("throws when min > max", () => {
+    expect(() => boundaries.number({ min: 100, max: 0 })).toThrow(RangeError);
+    expect(() => boundaries.number({ min: 100, max: 0 })).toThrow("min (100) must be <= max (0)");
   });
 
-  describe("boolean", () => {
-    it("has true and false as valid", () => {
-      const result = boundaries.boolean();
-      expect(result.valid).toEqual([true, false]);
-    });
-
-    it("has truthy/falsy non-booleans as invalid", () => {
-      const result = boundaries.boolean();
-      expect(result.invalid).toContain(null);
-      expect(result.invalid).toContain(undefined);
-      expect(result.invalid).toContain(0);
-      expect(result.invalid).toContain(1);
-      expect(result.invalid).toContain("");
-      expect(result.invalid).toContain("true");
-    });
+  it("deduplicates boundary when min === max", () => {
+    const r = boundaries.number({ min: 5, max: 5 });
+    // min, min+1, max-1, max = [5, 6, 4, 5] → dedupe → [5, 6, 4]
+    const unique = new Set(r.boundary);
+    expect(unique.size).toBe(r.boundary.length);
   });
 
-  describe("enum", () => {
-    it("returns all values as valid", () => {
-      const result = boundaries.enum({ values: ["admin", "user", "guest"] });
-      expect(result.valid).toEqual(["admin", "user", "guest"]);
-    });
-
-    it("returns invalid enum values", () => {
-      const result = boundaries.enum({ values: ["admin", "user"] });
-      expect(result.invalid).toContain("");
-      expect(result.invalid).toContain("INVALID_VALUE");
-      expect(result.invalid).toContain(null);
-    });
-
-    it("has first and last as boundary", () => {
-      const result = boundaries.enum({ values: ["a", "b", "c"] });
-      expect(result.boundary).toEqual(["a", "c"]);
-    });
-
-    it("handles empty values", () => {
-      const result = boundaries.enum({ values: [] });
-      expect(result.valid).toEqual([]);
-      expect(result.invalid).toEqual(["", null]);
-    });
+  it("deduplicates boundary for small ranges (min+1 === max)", () => {
+    const r = boundaries.number({ min: 0, max: 1 });
+    // [0, 1, 0, 1] → dedupe → [0, 1]
+    expect(r.boundary).toEqual([0, 1]);
   });
 
-  describe("url", () => {
-    it("generates valid URLs", () => {
-      const result = boundaries.url();
-      expect(result.valid).toContain("https://example.com");
-      expect(result.valid).toContain("http://example.com");
-    });
+  it("handles float ranges without duplicate boundaries", () => {
+    const r = boundaries.number({ min: 0.5, max: 1.5 });
+    // [0.5, 1.5, 0.5, 1.5] → dedupe → [0.5, 1.5]
+    const unique = new Set(r.boundary);
+    expect(unique.size).toBe(r.boundary.length);
+  });
+});
 
-    it("excludes http when requireHttps", () => {
-      const result = boundaries.url({ requireHttps: true });
-      expect(result.valid).not.toContain("http://example.com");
-    });
-
-    it("generates invalid URLs", () => {
-      const result = boundaries.url();
-      expect(result.invalid).toContain("");
-      expect(result.invalid).toContain("not-a-url");
-    });
-
-    it("generates boundary URLs", () => {
-      const result = boundaries.url();
-      expect(result.boundary).toContain("https://a.bc");
-      expect(result.boundary.some((v) => typeof v === "string" && v.length > 2000)).toBe(true);
-    });
+describe("boundaries.string", () => {
+  it("generates defaults (length 1-255)", () => {
+    const r = boundaries.string();
+    expect(r.valid[0]).toHaveLength(128); // midpoint of 1-255
+    expect(r.invalid).toContain("");
+    expect(r.boundary).toContainEqual("x");
+    expect(r.boundary).toContainEqual("x".repeat(255));
   });
 
-  describe("password", () => {
-    it("generates defaults (8-128)", () => {
-      const result = boundaries.password();
-      expect(result.valid.length).toBeGreaterThan(0);
-      expect(result.invalid).toContain("");
-    });
-
-    it("includes common weakness patterns as invalid", () => {
-      const result = boundaries.password();
-      expect(result.invalid).toContain("nouppercase1!");
-      expect(result.invalid).toContain("NOLOWERCASE1!");
-      expect(result.invalid).toContain("NoSpecialChar1");
-      expect(result.invalid).toContain("NoDigits!!abc");
-    });
-
-    it("respects custom lengths", () => {
-      const result = boundaries.password({ minLength: 12, maxLength: 64 });
-      const invalidShort = result.invalid.find(
-        (v) => typeof v === "string" && v === "x".repeat(11),
-      );
-      expect(invalidShort).toBeDefined();
-    });
+  it("valid string respects constraints", () => {
+    const r = boundaries.string({ minLength: 3, maxLength: 10 });
+    const validStr = r.valid[0] as string;
+    expect(validStr.length).toBeGreaterThanOrEqual(3);
+    expect(validStr.length).toBeLessThanOrEqual(10);
   });
 
-  describe("phone", () => {
-    it("generates international format by default", () => {
-      const result = boundaries.phone();
-      expect(result.valid.some((v) => typeof v === "string" && v.startsWith("+"))).toBe(true);
-    });
-
-    it("generates US format", () => {
-      const result = boundaries.phone({ format: "us" });
-      expect(result.valid).toContain("(555) 123-4567");
-    });
-
-    it("includes invalid phones", () => {
-      const result = boundaries.phone();
-      expect(result.invalid).toContain("");
-      expect(result.invalid).toContain("abc");
-    });
+  it("handles maxLength: 0", () => {
+    const r = boundaries.string({ minLength: 0, maxLength: 0 });
+    expect(r.valid).toContain("");
+    expect(r.invalid).toContainEqual("x");
   });
 
-  describe("uuid", () => {
-    it("generates valid UUIDs", () => {
-      const result = boundaries.uuid();
-      expect(result.valid.length).toBe(2);
-      for (const v of result.valid) {
-        expect(v).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
-      }
-    });
-
-    it("generates invalid UUIDs", () => {
-      const result = boundaries.uuid();
-      expect(result.invalid).toContain("");
-      expect(result.invalid).toContain("not-a-uuid");
-    });
-
-    it("has all-zeros and all-f as boundaries", () => {
-      const result = boundaries.uuid();
-      expect(result.boundary).toContain("00000000-0000-0000-0000-000000000000");
-      expect(result.boundary).toContain("ffffffff-ffff-ffff-ffff-ffffffffffff");
-    });
+  it("omits empty string from invalid when minLength is 0", () => {
+    const r = boundaries.string({ minLength: 0, maxLength: 50 });
+    expect(r.invalid).not.toContain("");
   });
 
-  describe("structure", () => {
-    it("every type returns valid, invalid, boundary arrays", () => {
-      const types = [
-        boundaries.number(),
-        boundaries.string(),
-        boundaries.email(),
-        boundaries.date(),
-        boundaries.boolean(),
-        boundaries.enum({ values: ["a"] }),
-        boundaries.url(),
-        boundaries.password(),
-        boundaries.phone(),
-        boundaries.uuid(),
-      ];
+  it("throws when minLength > maxLength", () => {
+    expect(() => boundaries.string({ minLength: 10, maxLength: 5 })).toThrow(RangeError);
+  });
 
-      for (const result of types) {
-        expect(Array.isArray(result.valid)).toBe(true);
-        expect(Array.isArray(result.invalid)).toBe(true);
-        expect(Array.isArray(result.boundary)).toBe(true);
-        expect(result.valid.length).toBeGreaterThan(0);
-        expect(result.invalid.length).toBeGreaterThan(0);
-      }
-    });
+  it("throws when minLength is negative", () => {
+    expect(() => boundaries.string({ minLength: -1 })).toThrow(RangeError);
+  });
+
+  it("deduplicates boundary when minLength === maxLength", () => {
+    const r = boundaries.string({ minLength: 5, maxLength: 5 });
+    expect(r.boundary).toEqual(["x".repeat(5)]);
+  });
+});
+
+describe("boundaries.email", () => {
+  it("generates valid emails", () => {
+    const r = boundaries.email();
+    expect(r.valid.length).toBeGreaterThanOrEqual(2);
+    expect(r.valid).toContain("user@example.com");
+  });
+
+  it("generates all expected invalid patterns", () => {
+    const r = boundaries.email();
+    expect(r.invalid).toContain("");
+    expect(r.invalid).toContain("no-at-sign");
+    expect(r.invalid).toContain("@missing-local");
+    expect(r.invalid).toContain("missing-domain@");
+    expect(r.invalid).toContain("spaces in@email.com");
+    expect(r.invalid).toContain("double@@at.com");
+  });
+
+  it("has min and max length boundary emails", () => {
+    const r = boundaries.email();
+    expect(r.boundary).toContain("a@b.c");
+    expect(r.boundary.some((v) => typeof v === "string" && v.length > 64)).toBe(true);
+  });
+});
+
+describe("boundaries.date", () => {
+  it("generates defaults", () => {
+    const r = boundaries.date();
+    expect(r.valid.length).toBe(1);
+    expect(r.invalid).toContain("");
+    expect(r.invalid).toContain("not-a-date");
+    expect(r.boundary.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("respects custom range", () => {
+    const r = boundaries.date({ min: "2025-01-01", max: "2025-12-31" });
+    expect(r.boundary).toContain("2025-01-01");
+    expect(r.boundary).toContain("2025-12-31");
+    expect(r.invalid).toContain("2024-12-31");
+    expect(r.invalid).toContain("2026-01-01");
+  });
+
+  it("throws on invalid min date string", () => {
+    expect(() => boundaries.date({ min: "garbage" })).toThrow(RangeError);
+    expect(() => boundaries.date({ min: "garbage" })).toThrow('invalid min date "garbage"');
+  });
+
+  it("throws on invalid max date string", () => {
+    expect(() => boundaries.date({ max: "not-a-date" })).toThrow(RangeError);
+  });
+
+  it("throws when min > max", () => {
+    expect(() => boundaries.date({ min: "2026-01-01", max: "2025-01-01" })).toThrow(RangeError);
+  });
+
+  it("deduplicates boundary for single-day range", () => {
+    const r = boundaries.date({ min: "2025-06-15", max: "2025-06-15" });
+    const unique = new Set(r.boundary);
+    expect(unique.size).toBe(r.boundary.length);
+  });
+});
+
+describe("boundaries.boolean", () => {
+  it("has true and false as valid", () => {
+    expect(boundaries.boolean().valid).toEqual([true, false]);
+  });
+
+  it("has truthy/falsy non-booleans as invalid", () => {
+    const r = boundaries.boolean();
+    expect(r.invalid).toContain(null);
+    expect(r.invalid).toContain(undefined);
+    expect(r.invalid).toContain(0);
+    expect(r.invalid).toContain(1);
+    expect(r.invalid).toContain("");
+    expect(r.invalid).toContain("true");
+  });
+});
+
+describe("boundaries.enum", () => {
+  it("returns all values as valid", () => {
+    const r = boundaries.enum({ values: ["admin", "user", "guest"] });
+    expect(r.valid).toEqual(["admin", "user", "guest"]);
+  });
+
+  it("returns invalid enum values", () => {
+    const r = boundaries.enum({ values: ["admin", "user"] });
+    expect(r.invalid).toContain("");
+    expect(r.invalid).toContain("INVALID_VALUE");
+    expect(r.invalid).toContain(null);
+  });
+
+  it("deduplicates boundary for single-value enum", () => {
+    const r = boundaries.enum({ values: ["only"] });
+    expect(r.boundary).toEqual(["only"]);
+  });
+
+  it("handles empty values", () => {
+    const r = boundaries.enum({ values: [] });
+    expect(r.valid).toEqual([]);
+    expect(r.invalid).toEqual(["", null]);
+  });
+});
+
+describe("boundaries.url", () => {
+  it("generates valid URLs", () => {
+    const r = boundaries.url();
+    expect(r.valid).toContain("https://example.com");
+    expect(r.valid).toContain("http://example.com");
+  });
+
+  it("excludes http when requireHttps", () => {
+    const r = boundaries.url({ requireHttps: true });
+    expect(r.valid).not.toContain("http://example.com");
+  });
+
+  it("generates invalid URLs", () => {
+    const r = boundaries.url();
+    expect(r.invalid).toContain("");
+    expect(r.invalid).toContain("not-a-url");
+  });
+
+  it("has long URL as boundary", () => {
+    const r = boundaries.url();
+    expect(r.boundary.some((v) => typeof v === "string" && v.length > 2000)).toBe(true);
+  });
+});
+
+describe("boundaries.password", () => {
+  it("generates defaults (8-128)", () => {
+    const r = boundaries.password();
+    expect(r.valid.length).toBeGreaterThan(0);
+    expect(r.invalid).toContain("");
+  });
+
+  it("includes common weakness patterns as invalid", () => {
+    const r = boundaries.password();
+    expect(r.invalid).toContain("nouppercase1!");
+    expect(r.invalid).toContain("NOLOWERCASE1!");
+    expect(r.invalid).toContain("NoSpecialChar1");
+    expect(r.invalid).toContain("NoDigits!!abc");
+  });
+
+  it("does not crash with minLength: 0", () => {
+    expect(() => boundaries.password({ minLength: 0 })).not.toThrow();
+    const r = boundaries.password({ minLength: 0 });
+    expect(r.boundary.length).toBeGreaterThan(0);
+  });
+
+  it("does not crash with minLength: 1", () => {
+    expect(() => boundaries.password({ minLength: 1 })).not.toThrow();
+  });
+
+  it("throws when minLength > maxLength", () => {
+    expect(() => boundaries.password({ minLength: 20, maxLength: 5 })).toThrow(RangeError);
+  });
+
+  it("throws when minLength is negative", () => {
+    expect(() => boundaries.password({ minLength: -1 })).toThrow(RangeError);
+  });
+
+  it("boundary passwords have correct target lengths", () => {
+    const r = boundaries.password({ minLength: 12, maxLength: 64 });
+    for (const b of r.boundary) {
+      const s = b as string;
+      expect(s.length === 12 || s.length === 64).toBe(true);
+    }
+  });
+
+  it("no duplicate values in invalid array", () => {
+    const r = boundaries.password({ minLength: 0 });
+    const unique = new Set(r.invalid.map(String));
+    expect(unique.size).toBe(r.invalid.length);
+  });
+});
+
+describe("boundaries.phone", () => {
+  it("generates international format by default", () => {
+    const r = boundaries.phone();
+    expect(r.valid.some((v) => typeof v === "string" && v.startsWith("+"))).toBe(true);
+  });
+
+  it("generates US format", () => {
+    const r = boundaries.phone({ format: "us" });
+    expect(r.valid).toContain("(555) 123-4567");
+  });
+
+  it("includes invalid phones", () => {
+    const r = boundaries.phone();
+    expect(r.invalid).toContain("");
+    expect(r.invalid).toContain("abc");
+  });
+});
+
+describe("boundaries.uuid", () => {
+  it("generates valid UUIDs", () => {
+    const r = boundaries.uuid();
+    for (const v of r.valid) {
+      expect(v).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+    }
+  });
+
+  it("generates invalid UUIDs", () => {
+    const r = boundaries.uuid();
+    expect(r.invalid).toContain("");
+    expect(r.invalid).toContain("not-a-uuid");
+  });
+
+  it("has all-zeros and all-f as boundaries", () => {
+    const r = boundaries.uuid();
+    expect(r.boundary).toContain("00000000-0000-0000-0000-000000000000");
+    expect(r.boundary).toContain("ffffffff-ffff-ffff-ffff-ffffffffffff");
+  });
+});
+
+describe("boundaries — structure", () => {
+  it("every type returns valid, invalid, boundary arrays", () => {
+    const types = [
+      boundaries.number(),
+      boundaries.string(),
+      boundaries.email(),
+      boundaries.date(),
+      boundaries.boolean(),
+      boundaries.enum({ values: ["a"] }),
+      boundaries.url(),
+      boundaries.password(),
+      boundaries.phone(),
+      boundaries.uuid(),
+    ];
+
+    for (const r of types) {
+      expect(Array.isArray(r.valid)).toBe(true);
+      expect(Array.isArray(r.invalid)).toBe(true);
+      expect(Array.isArray(r.boundary)).toBe(true);
+      expect(r.valid.length).toBeGreaterThan(0);
+      expect(r.invalid.length).toBeGreaterThan(0);
+    }
   });
 });

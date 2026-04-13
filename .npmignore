@@ -3,8 +3,11 @@ __tests__/
 .github/
 tsconfig.json
 tsup.config.ts
-jest.config.ts
+jest.config.js
 .gitignore
 coverage/
 *.tgz
 .DS_Store
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md
+SECURITY.md

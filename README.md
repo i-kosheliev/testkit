@@ -142,20 +142,13 @@ Options: `{ threshold?: number, ignoreCase?: boolean, stopWords?: string[] }`
 
 **faker.js** generates random plausible data. **fast-check** generates random inputs for property-based testing. **@iklab/testkit** generates structured, deterministic test data using ISTQB techniques. They solve different problems and complement each other.
 
-## Want AI-Powered Test Generation?
+## See Also
 
-If you like what `boundaries()` does for individual fields, check out **[CasePilot](https://marketplace.visualstudio.com/items?itemName=ikcasepilot.casepilot)** — it uses a three-pass AI pipeline to generate entire test suites from User Stories in Azure DevOps and Jira.
+- **[CasePilot](https://iklab.dev)** — AI-powered test case generation from User Stories (Azure DevOps, Jira)
 
 ## Contributing
 
-PRs welcome. Please include tests for new features.
-
-```bash
-git clone https://github.com/i-kosheliev/testkit.git
-cd testkit
-npm install
-npm test
-```
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 

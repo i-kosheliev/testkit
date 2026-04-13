@@ -57,20 +57,27 @@ describe("testEach", () => {
 
   it("formats null as (null)", () => {
     const rows = testEach(boundaries.boolean());
-    const labels = rows.map(([label]) => label);
-    expect(labels.some((l) => l.includes("(null)"))).toBe(true);
+    expect(rows.some(([label]) => label.includes("(null)"))).toBe(true);
   });
 
   it("formats empty string as (empty)", () => {
     const rows = testEach(boundaries.email());
-    const labels = rows.map(([label]) => label);
-    expect(labels.some((l) => l.includes("(empty)"))).toBe(true);
+    expect(rows.some(([label]) => label.includes("(empty)"))).toBe(true);
   });
 
-  it("formats NaN", () => {
+  it("formats NaN as (NaN)", () => {
     const rows = testEach(boundaries.number());
-    const labels = rows.map(([label]) => label);
-    expect(labels.some((l) => l.includes("(NaN)"))).toBe(true);
+    expect(rows.some(([label]) => label.includes("(NaN)"))).toBe(true);
+  });
+
+  it("formats undefined as (undefined)", () => {
+    const rows = testEach(boundaries.boolean());
+    expect(rows.some(([label]) => label.includes("(undefined)"))).toBe(true);
+  });
+
+  it("formats -Infinity as (-Infinity)", () => {
+    const rows = testEach(boundaries.number());
+    expect(rows.some(([label]) => label.includes("(-Infinity)"))).toBe(true);
   });
 
   it("works with all boundary types", () => {
@@ -93,18 +100,28 @@ describe("testEach", () => {
     }
   });
 
+  it("throws descriptive error on null input", () => {
+    expect(() => testEach(null as never)).toThrow(TypeError);
+    expect(() => testEach(null as never)).toThrow("BoundaryResult");
+  });
+
+  it("throws descriptive error on empty object input", () => {
+    expect(() => testEach({} as never)).toThrow(TypeError);
+  });
+
+  it("throws descriptive error on undefined input", () => {
+    expect(() => testEach(undefined as never)).toThrow(TypeError);
+  });
+
   it("integrates with Jest test.each pattern", () => {
     const cases = testEach(boundaries.number({ min: 1, max: 10 }), {
       validLabel: "validates %s",
       invalidLabel: "rejects %s",
     });
-    // Simulate how a developer would use it:
-    // test.each(cases)('%s', (label, input, expected) => { ... })
-    for (const [label, input, expected] of cases) {
+    for (const [label, , expected] of cases) {
       expect(typeof label).toBe("string");
       expect(label.length).toBeGreaterThan(0);
       expect(typeof expected).toBe("boolean");
-      // input can be any type
     }
   });
 });

@@ -1,5 +1,7 @@
 import type { DuplicateResult, DuplicateOptions } from "./types";
 
+const MAX_DESCRIPTIONS = 10_000;
+
 const DEFAULT_STOP_WORDS = new Set([
   "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
   "have", "has", "had", "do", "does", "did", "will", "would", "shall",
@@ -12,7 +14,7 @@ const DEFAULT_STOP_WORDS = new Set([
 ]);
 
 function tokenize(text: string, ignoreCase: boolean, extraStopWords: string[]): Set<string> {
-  if (!text) return new Set();
+  if (!text || typeof text !== "string") return new Set();
 
   const stopWords = new Set([...DEFAULT_STOP_WORDS, ...extraStopWords]);
 
@@ -41,6 +43,8 @@ function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
 /**
  * Detect duplicate or overlapping test descriptions using Jaccard similarity.
  *
+ * Complexity: O(n^2) — for large arrays (>10,000 items) this will throw.
+ *
  * @param descriptions - Array of test case titles or descriptions
  * @param options - Threshold, case sensitivity, extra stop words
  * @returns Pairs above threshold, sorted by similarity descending
@@ -49,29 +53,37 @@ export function detectDuplicates(
   descriptions: string[],
   options: DuplicateOptions = {},
 ): DuplicateResult {
-  const {
-    threshold = 0.6,
-    ignoreCase = true,
-    stopWords = [],
-  } = options;
+  const threshold = Math.max(0, Math.min(1, options.threshold ?? 0.6));
+  const ignoreCase = options.ignoreCase ?? true;
+  const stopWords = options.stopWords ?? [];
 
   if (!descriptions || descriptions.length < 2) {
     return { pairs: [], threshold };
   }
 
-  const tokenSets = descriptions.map((d) => tokenize(d, ignoreCase, stopWords));
+  if (descriptions.length > MAX_DESCRIPTIONS) {
+    throw new RangeError(
+      `detectDuplicates(): input has ${descriptions.length} items, max is ${MAX_DESCRIPTIONS}. ` +
+      `O(n^2) comparison would be too slow.`,
+    );
+  }
+
+  // Coerce non-strings to strings to prevent runtime crashes
+  const safe = descriptions.map((d) => (typeof d === "string" ? d : String(d ?? "")));
+
+  const tokenSets = safe.map((d) => tokenize(d, ignoreCase, stopWords));
   const pairs: DuplicateResult["pairs"] = [];
 
-  for (let i = 0; i < descriptions.length; i++) {
-    for (let j = i + 1; j < descriptions.length; j++) {
+  for (let i = 0; i < safe.length; i++) {
+    for (let j = i + 1; j < safe.length; j++) {
       const similarity = jaccardSimilarity(tokenSets[i], tokenSets[j]);
       if (similarity >= threshold) {
         pairs.push({
           indexA: i,
           indexB: j,
           similarity: Math.round(similarity * 100) / 100,
-          textA: descriptions[i],
-          textB: descriptions[j],
+          textA: safe[i],
+          textB: safe[j],
         });
       }
     }

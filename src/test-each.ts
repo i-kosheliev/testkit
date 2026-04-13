@@ -20,6 +20,18 @@ export function testEach(
   result: BoundaryResult,
   options: TestEachOptions = {},
 ): TestEachRow[] {
+  if (
+    !result ||
+    !Array.isArray(result.valid) ||
+    !Array.isArray(result.invalid) ||
+    !Array.isArray(result.boundary)
+  ) {
+    throw new TypeError(
+      "testEach(): expected a BoundaryResult with valid, invalid, and boundary arrays. " +
+      "Pass the output of boundaries.*() as the first argument.",
+    );
+  }
+
   const {
     validLabel = "accepts valid: %s",
     invalidLabel = "rejects invalid: %s",

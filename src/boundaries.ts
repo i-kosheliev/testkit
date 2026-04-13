@@ -9,14 +9,39 @@ import type {
   PhoneOptions,
 } from "./types";
 
+/** Remove duplicate values from an array (handles NaN correctly). */
+function dedupe(arr: unknown[]): unknown[] {
+  const seen = new Set<unknown>();
+  const result: unknown[] = [];
+  for (const v of arr) {
+    // NaN !== NaN, so track it separately
+    if (typeof v === "number" && isNaN(v)) {
+      if (!seen.has("__NaN__")) {
+        seen.add("__NaN__");
+        result.push(v);
+      }
+    } else if (!seen.has(v)) {
+      seen.add(v);
+      result.push(v);
+    }
+  }
+  return result;
+}
+
 function numberBoundaries(opts: NumberOptions = {}): BoundaryResult {
   const min = opts.min ?? 0;
   const max = opts.max ?? 100;
 
+  if (min > max) {
+    throw new RangeError(`boundaries.number(): min (${min}) must be <= max (${max})`);
+  }
+
+  const boundary = dedupe([min, min + 1, max - 1, max]);
+
   return {
     valid: [Math.floor((min + max) / 2)],
     invalid: [min - 1, max + 1, NaN, Infinity, -Infinity],
-    boundary: [min, min + 1, max - 1, max],
+    boundary,
   };
 }
 
@@ -24,16 +49,28 @@ function stringBoundaries(opts: StringOptions = {}): BoundaryResult {
   const minLen = opts.minLength ?? 1;
   const maxLen = opts.maxLength ?? 255;
 
+  if (minLen < 0) {
+    throw new RangeError(`boundaries.string(): minLength (${minLen}) must be >= 0`);
+  }
+  if (minLen > maxLen) {
+    throw new RangeError(`boundaries.string(): minLength (${minLen}) must be <= maxLength (${maxLen})`);
+  }
+
+  // Generate a valid string that respects the constraints
+  const validLen = Math.max(minLen, Math.min(maxLen, Math.floor((minLen + maxLen) / 2)));
+  const validStr = validLen === 0 ? "" : "a".repeat(validLen);
+
+  const invalid: unknown[] = [];
+  if (minLen > 0) invalid.push("");
+  if (maxLen < Number.MAX_SAFE_INTEGER) invalid.push("x".repeat(maxLen + 1));
+
   return {
-    valid: ["hello"],
-    invalid: [
-      ...(minLen > 0 ? [""] : []),
-      "x".repeat(maxLen + 1),
-    ],
-    boundary: [
+    valid: [validStr],
+    invalid,
+    boundary: dedupe([
       "x".repeat(minLen),
       "x".repeat(maxLen),
-    ],
+    ]),
   };
 }
 
@@ -59,8 +96,17 @@ function dateBoundaries(opts: DateOptions = {}): BoundaryResult {
   const minDate = opts.min ? new Date(opts.min) : new Date("2000-01-01");
   const maxDate = opts.max ? new Date(opts.max) : new Date("2099-12-31");
 
-  const dayMs = 86_400_000;
+  if (isNaN(minDate.getTime())) {
+    throw new RangeError(`boundaries.date(): invalid min date "${opts.min}"`);
+  }
+  if (isNaN(maxDate.getTime())) {
+    throw new RangeError(`boundaries.date(): invalid max date "${opts.max}"`);
+  }
+  if (minDate > maxDate) {
+    throw new RangeError(`boundaries.date(): min date must be <= max date`);
+  }
 
+  const dayMs = 86_400_000;
   const midTime = new Date((minDate.getTime() + maxDate.getTime()) / 2);
 
   return {
@@ -73,12 +119,12 @@ function dateBoundaries(opts: DateOptions = {}): BoundaryResult {
       new Date(minDate.getTime() - dayMs).toISOString().split("T")[0],
       new Date(maxDate.getTime() + dayMs).toISOString().split("T")[0],
     ],
-    boundary: [
+    boundary: dedupe([
       minDate.toISOString().split("T")[0],
       new Date(minDate.getTime() + dayMs).toISOString().split("T")[0],
       new Date(maxDate.getTime() - dayMs).toISOString().split("T")[0],
       maxDate.toISOString().split("T")[0],
-    ],
+    ]),
   };
 }
 
@@ -98,7 +144,7 @@ function enumBoundaries(opts: EnumOptions): BoundaryResult {
   return {
     valid: [...opts.values],
     invalid: ["", "INVALID_VALUE", null],
-    boundary: [opts.values[0], opts.values[opts.values.length - 1]],
+    boundary: dedupe([opts.values[0], opts.values[opts.values.length - 1]]),
   };
 }
 
@@ -133,21 +179,41 @@ function passwordBoundaries(opts: PasswordOptions = {}): BoundaryResult {
   const minLen = opts.minLength ?? 8;
   const maxLen = opts.maxLength ?? 128;
 
+  if (minLen < 0) {
+    throw new RangeError(`boundaries.password(): minLength (${minLen}) must be >= 0`);
+  }
+  if (minLen > maxLen) {
+    throw new RangeError(`boundaries.password(): minLength (${minLen}) must be <= maxLength (${maxLen})`);
+  }
+
+  const invalid: unknown[] = [""];
+  if (minLen > 1) {
+    invalid.push("x".repeat(minLen - 1));
+  }
+  invalid.push(
+    "x".repeat(maxLen + 1),
+    "nouppercase1!",
+    "NOLOWERCASE1!",
+    "NoSpecialChar1",
+    "NoDigits!!abc",
+  );
+
+  // Build boundary passwords that actually have the target length.
+  // Pattern: uppercase fill + "a1!" suffix (3 chars).
+  const suffix = "a1!";
+  const buildBoundary = (targetLen: number): string => {
+    if (targetLen <= 0) return "";
+    if (targetLen <= suffix.length) return suffix.slice(0, targetLen);
+    return "A".repeat(targetLen - suffix.length) + suffix;
+  };
+
   return {
     valid: ["P@ssw0rd!2025", "Str0ng#Pass"],
-    invalid: [
-      "",
-      "x".repeat(minLen - 1),
-      "x".repeat(maxLen + 1),
-      "nouppercase1!",
-      "NOLOWERCASE1!",
-      "NoSpecialChar1",
-      "NoDigits!!abc",
-    ],
-    boundary: [
-      "A".repeat(Math.max(1, minLen - 3)) + "a1!",
-      "A".repeat(Math.max(1, maxLen - 3)) + "a1!",
-    ],
+    invalid: dedupe(invalid),
+    boundary: dedupe([
+      buildBoundary(minLen),
+      buildBoundary(maxLen),
+    ]),
   };
 }
 

@@ -50,6 +50,13 @@
     "lint": "tsc --noEmit",
     "prepublishOnly": "npm run build"
   },
+  "engines": {
+    "node": ">=18"
+  },
+  "homepage": "https://github.com/i-kosheliev/testkit#readme",
+  "bugs": {
+    "url": "https://github.com/i-kosheliev/testkit/issues"
+  },
   "devDependencies": {
     "@types/jest": "^29.5.14",
     "jest": "^29.7.0",
