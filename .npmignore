@@ -1,0 +1,10 @@
+src/
+__tests__/
+.github/
+tsconfig.json
+tsup.config.ts
+jest.config.ts
+.gitignore
+coverage/
+*.tgz
+.DS_Store
