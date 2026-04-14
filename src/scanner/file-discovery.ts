@@ -106,7 +106,8 @@ function isTestFile(filename: string, customPattern: RegExp | null): boolean {
  * Supports: *, ?, {a,b}
  * Examples: "*.test.ts" → /^.*\.test\.ts$/
  */
-function globToRegex(glob: string): RegExp {
+/** @internal Exported for testing only */
+export function globToRegex(glob: string): RegExp {
   let regex = glob
     .replace(/[.+^${}()|[\]\\]/g, "\\$&") // Escape special regex chars
     .replace(/\*/g, ".*")                   // * → .*

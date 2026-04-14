@@ -3,7 +3,10 @@ import { join } from "node:path";
 import { parseFile } from "../scanner/ast-parser";
 import { extractTests } from "../scanner/test-extractor";
 import { analyzeCode } from "../scanner/code-analyzer";
-import { discoverTestFiles, getRelativePath } from "../scanner/file-discovery";
+import { discoverTestFiles, getRelativePath, globToRegex } from "../scanner/file-discovery";
+import { formatTextReport } from "../reporter/text-reporter";
+import { formatJsonReport } from "../reporter/json-reporter";
+import type { ScanReport } from "../scanner/types";
 
 const FIXTURES = join(__dirname, "fixtures");
 
@@ -219,11 +222,88 @@ describe("file-discovery", () => {
   });
 
   it("excludes node_modules", () => {
-    // discoverTestFiles from project root should not include node_modules
     const root = join(__dirname, "../..");
     const files = discoverTestFiles(root);
-
     const inNodeModules = files.filter((f) => f.includes("node_modules"));
     expect(inNodeModules).toHaveLength(0);
+  });
+});
+
+// ─── globToRegex ────────────────────────────────────────────────────
+
+describe("globToRegex", () => {
+  it("matches simple wildcard pattern", () => {
+    const re = globToRegex("*.test.ts");
+    expect(re.test("auth.test.ts")).toBe(true);
+    expect(re.test("login.test.ts")).toBe(true);
+    expect(re.test("auth.spec.ts")).toBe(false);
+  });
+
+  it("matches question mark as single char", () => {
+    const re = globToRegex("test?.ts");
+    expect(re.test("test1.ts")).toBe(true);
+    expect(re.test("testA.ts")).toBe(true);
+    expect(re.test("test12.ts")).toBe(false);
+  });
+
+  it("escapes dots correctly", () => {
+    const re = globToRegex("*.test.ts");
+    expect(re.test("authXtestXts")).toBe(false); // dots must be literal
+  });
+
+  it("handles pattern without wildcards", () => {
+    const re = globToRegex("exact.test.ts");
+    expect(re.test("exact.test.ts")).toBe(true);
+    expect(re.test("other.test.ts")).toBe(false);
+  });
+});
+
+// ─── Reporters ──────────────────────────────────────────────────────
+
+function makeEmptyReport(): ScanReport {
+  return {
+    files: [],
+    flakyTests: [],
+    duplicates: [],
+    summary: { filesScanned: 0, testsFound: 0, issuesFound: 0, duplicatesFound: 0, flakyTestsFound: 0, skippedTests: 0, focusedTests: 0 },
+  };
+}
+
+describe("text-reporter", () => {
+  it("includes header", () => {
+    const output = formatTextReport(makeEmptyReport());
+    expect(output).toContain("@iklab/testkit scan report");
+  });
+
+  it("shows 'No issues found' for clean report", () => {
+    const output = formatTextReport(makeEmptyReport());
+    expect(output).toContain("No issues found");
+  });
+
+  it("shows summary stats", () => {
+    const report = makeEmptyReport();
+    report.summary.filesScanned = 5;
+    report.summary.testsFound = 42;
+    const output = formatTextReport(report);
+    expect(output).toContain("5");
+    expect(output).toContain("42");
+  });
+});
+
+describe("json-reporter", () => {
+  it("produces valid JSON", () => {
+    const output = formatJsonReport(makeEmptyReport());
+    const parsed = JSON.parse(output);
+    expect(parsed.files).toEqual([]);
+    expect(parsed.summary.filesScanned).toBe(0);
+  });
+
+  it("includes all report sections", () => {
+    const output = formatJsonReport(makeEmptyReport());
+    const parsed = JSON.parse(output);
+    expect(parsed).toHaveProperty("files");
+    expect(parsed).toHaveProperty("flakyTests");
+    expect(parsed).toHaveProperty("duplicates");
+    expect(parsed).toHaveProperty("summary");
   });
 });
