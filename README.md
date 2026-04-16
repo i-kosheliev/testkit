@@ -7,7 +7,7 @@
 
 **Stop guessing edge cases.** Structured test data for developers who write tests.
 
-Boundary values, flakiness prediction, duplicate detection. TypeScript-first, zero dependencies.
+Boundary values, flakiness prediction, duplicate detection, requirements coverage, test suggestions. TypeScript-first, zero dependencies.
 
 ## Install
 
@@ -63,7 +63,20 @@ boundaries.enum({ values: ['admin', 'user', 'guest'] })
 //   boundary: ['admin', 'guest'] }
 ```
 
-**Supported types:** `number`, `string`, `email`, `date`, `boolean`, `enum`, `url`, `password`, `phone`, `uuid`
+**Supported types:** `number`, `string`, `email`, `date`, `boolean`, `enum`, `url`, `password`, `phone`, `uuid`, `custom`
+
+#### Custom field types
+
+Define your own domain-specific validation rules:
+
+```ts
+boundaries.custom({
+  valid: [18, 25, 65],
+  invalid: [-1, 0, 17, 151],
+  boundary: [18, 150],
+})
+// Works with testEach() like any other type
+```
 
 ### `flaky()` — Predict Flakiness Risk
 
@@ -128,6 +141,49 @@ detectDuplicates([
 
 Options: `{ threshold?: number, ignoreCase?: boolean, stopWords?: string[] }`
 
+### `coverage()` — Requirements Coverage Check
+
+Check if your tests cover all requirements. Uses text similarity to match test descriptions against requirement statements.
+
+```ts
+import { coverage } from '@iklab/testkit';
+
+const result = coverage(
+  ['should login with valid credentials', 'should show error for wrong password'],
+  ['User can login', 'User sees error on invalid password', 'User can reset password']
+);
+
+// { covered: ['User can login', 'User sees error on invalid password'],
+//   uncovered: ['User can reset password'],
+//   coveragePercent: 67,
+//   mapping: [{ requirement: 'User can login', matchedTests: ['should login...'], covered: true }, ...] }
+```
+
+Options: `{ threshold?: number }` — similarity threshold (0-1, default 0.3)
+
+### `suggest()` — Test Improvement Suggestions
+
+Analyze a test description and get suggestions for missing scenarios. Detects 12 patterns: CRUD operations, auth, file uploads, payments, pagination, concurrency.
+
+```ts
+import { suggest } from '@iklab/testkit';
+
+suggest('should create a new user')
+// { suggestions: [
+//     'Consider negative case: what happens with invalid or missing input?',
+//     'Consider edge case: empty, null, or zero values.',
+//     'Consider boundary values for relevant fields.'
+//   ],
+//   score: 3 }
+
+suggest('should upload user avatar')
+// { suggestions: [
+//     'Consider edge case: what about empty files, oversized files, or unsupported formats?',
+//     ...
+//   ],
+//   score: 4 }
+```
+
 ## How It Compares
 
 | Feature | @iklab/testkit | faker.js | fast-check |
@@ -136,6 +192,8 @@ Options: `{ threshold?: number, ignoreCase?: boolean, stopWords?: string[] }`
 | Equivalence partitioning | Yes | No | No |
 | Flakiness prediction | Yes | No | No |
 | Duplicate detection | Yes | No | No |
+| Requirements coverage | Yes | No | No |
+| Test suggestions | Yes | No | No |
 | test.each integration | Yes | No | No |
 | Random data | No | Yes | Yes (property-based) |
 | Zero dependencies | Yes | No | No |
@@ -144,7 +202,8 @@ Options: `{ threshold?: number, ignoreCase?: boolean, stopWords?: string[] }`
 
 ## See Also
 
-- **[CasePilot](https://iklab.dev)** — AI-powered test case generation from User Stories (Azure DevOps, Jira)
+- **[QualityPilot](https://qualitypilot-two.vercel.app)** — GitHub test health scanner (free)
+- **[IK Lab](https://iklab.dev)** — AI-powered QA tools
 
 ## Contributing
 
