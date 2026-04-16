@@ -282,4 +282,14 @@ export const boundaries = {
   password: passwordBoundaries,
   phone: phoneBoundaries,
   uuid: uuidBoundaries,
+  custom(rules: { valid: unknown[]; invalid: unknown[]; boundary?: unknown[] }): BoundaryResult {
+    if (!rules || !Array.isArray(rules.valid) || !Array.isArray(rules.invalid)) {
+      throw new TypeError("custom() requires { valid: unknown[], invalid: unknown[] }");
+    }
+    return {
+      valid: [...rules.valid],
+      invalid: [...rules.invalid],
+      boundary: rules.boundary ? [...rules.boundary] : [],
+    };
+  },
 };

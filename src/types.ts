@@ -96,3 +96,23 @@ export interface TestEachOptions {
 
 /** A single test.each row: [label, input, expected]. */
 export type TestEachRow = [string, unknown, boolean];
+
+// Coverage
+export interface CoverageMapping {
+  requirement: string;
+  matchedTests: string[];
+  covered: boolean;
+}
+
+export interface CoverageResult {
+  covered: string[];
+  uncovered: string[];
+  coveragePercent: number;
+  mapping: CoverageMapping[];
+}
+
+// Suggestions
+export interface SuggestionResult {
+  suggestions: string[];
+  score: number;
+}
