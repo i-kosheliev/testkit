@@ -464,3 +464,39 @@ describe("boundaries — structure", () => {
     }
   });
 });
+
+describe("boundaries.custom", () => {
+  it("returns provided values", () => {
+    const result = boundaries.custom({
+      valid: [18, 25, 65],
+      invalid: [-1, 0, 17, 151],
+      boundary: [18, 150],
+    });
+    expect(result.valid).toEqual([18, 25, 65]);
+    expect(result.invalid).toEqual([-1, 0, 17, 151]);
+    expect(result.boundary).toEqual([18, 150]);
+  });
+
+  it("defaults boundary to empty array", () => {
+    const result = boundaries.custom({
+      valid: ["a"],
+      invalid: [""],
+    });
+    expect(result.boundary).toEqual([]);
+  });
+
+  it("throws on missing valid array", () => {
+    expect(() => boundaries.custom({ valid: null as any, invalid: [] })).toThrow(TypeError);
+  });
+
+  it("throws on missing invalid array", () => {
+    expect(() => boundaries.custom({ valid: [], invalid: null as any })).toThrow(TypeError);
+  });
+
+  it("works with testEach", () => {
+    const { testEach } = require("../test-each");
+    const result = boundaries.custom({ valid: [1], invalid: [0], boundary: [1] });
+    const rows = testEach(result);
+    expect(rows.length).toBeGreaterThan(0);
+  });
+});

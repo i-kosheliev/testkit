@@ -2,6 +2,8 @@ export { boundaries } from "./boundaries";
 export { flaky } from "./flaky";
 export { testEach } from "./test-each";
 export { detectDuplicates } from "./duplicates";
+export { coverage } from "./coverage";
+export { suggest } from "./suggest";
 
 export type {
   BoundaryResult,
@@ -18,4 +20,7 @@ export type {
   DuplicateOptions,
   TestEachOptions,
   TestEachRow,
+  CoverageResult,
+  CoverageMapping,
+  SuggestionResult,
 } from "./types";
