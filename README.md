@@ -5,9 +5,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Bundle Size](https://img.shields.io/bundlephobia/minzip/@iklab/testkit)](https://bundlephobia.com/package/@iklab/testkit)
 
-**Stop guessing edge cases.** Structured test data for developers who write tests.
+**ISTQB boundary analysis for your `test.each` — without the spreadsheet.**
 
-Boundary values, flakiness prediction, duplicate detection, requirements coverage, test suggestions. TypeScript-first, zero dependencies.
+A toolkit for test automation engineers: boundary values, flakiness prediction, duplicate detection, requirements coverage, test suggestions. TypeScript-first, zero dependencies, 9 KB packed.
+
+Built by a Senior QA Automation Engineer who got tired of re-hardcoding `0, -1, 1, 99, 100, 101` in every test file.
 
 ## Install
 
@@ -17,21 +19,112 @@ npm install @iklab/testkit
 
 ## Quick Start
 
+### Jest / Vitest
+
 ```ts
 import { boundaries, testEach } from '@iklab/testkit';
 
-// Generate boundary test data for email validation
 const cases = testEach(boundaries.email(), {
   validLabel: 'accepts %s',
   invalidLabel: 'rejects %s',
 });
 
-test.each(cases)('%s', (label, input, expected) => {
+test.each(cases)('%s', (_label, input, expected) => {
   expect(validateEmail(input)).toBe(expected);
 });
 ```
 
-One import. Every edge case covered. Copy-paste into your test file.
+### Playwright
+
+```ts
+import { test, expect } from '@playwright/test';
+import { boundaries, testEach } from '@iklab/testkit';
+
+const cases = testEach(boundaries.email(), {
+  validLabel: 'accepts %s',
+  invalidLabel: 'rejects %s',
+});
+
+for (const [label, input, expected] of cases) {
+  test(label, async ({ page }) => {
+    await page.goto('/signup');
+    await page.fill('#email', input);
+    await page.click('button[type=submit]');
+    if (expected) {
+      await expect(page.locator('.error')).toBeHidden();
+    } else {
+      await expect(page.locator('.error')).toBeVisible();
+    }
+  });
+}
+```
+
+One import. Every edge case covered. Works in Jest, Vitest, Playwright, and Cypress.
+
+## Before / After
+
+**Before — 30 lines of hardcoded edge cases per field:**
+
+```ts
+test('rejects empty email', () => expect(validate('')).toBe(false));
+test('rejects missing @', () => expect(validate('no-at-sign')).toBe(false));
+test('rejects missing local', () => expect(validate('@domain.com')).toBe(false));
+test('rejects missing domain', () => expect(validate('user@')).toBe(false));
+test('rejects spaces', () => expect(validate('a b@c.com')).toBe(false));
+test('accepts standard', () => expect(validate('user@example.com')).toBe(true));
+// ...20 more lines, and you still forgot the 64-char local-part boundary
+```
+
+**After — 5 lines, ISTQB-backed, and boundaries included:**
+
+```ts
+const cases = testEach(boundaries.email(), { validLabel: 'ok: %s', invalidLabel: 'bad: %s' });
+test.each(cases)('%s', (_, input, expected) => {
+  expect(validate(input)).toBe(expected);
+});
+```
+
+---
+
+**Before — copy-pasted age boundaries across 4 test files:**
+
+```ts
+// signup.test.ts
+[-1, 0, 17, 18, 65, 120, 121].forEach(age => { /* ... */ });
+// profile.test.ts  — same list, copied
+// admin.test.ts    — same list, copied, one value wrong
+// checkout.test.ts — same list, copied, missing NaN case
+```
+
+**After — one source of truth:**
+
+```ts
+boundaries.number({ min: 18, max: 120 })
+// { valid: [69], invalid: [-1, 17, 121, NaN, Infinity], boundary: [18, 19, 119, 120] }
+```
+
+---
+
+**Before — reviewing a flaky test after it fails in CI three times:**
+
+```ts
+test('user receives welcome email', async () => {
+  await signup(user);
+  await sleep(3000);           // fixed wait
+  const inbox = await fetchInbox(user.email);  // hits real SMTP
+  expect(inbox).toContain('Welcome');
+});
+```
+
+**After — flag the risk before it reaches CI:**
+
+```ts
+flaky('Wait 3 seconds then check if email arrived')
+// { score: 5,
+//   risks: ['Timing dependency', 'Email/notification'],
+//   suggestions: ['Use waitFor/polling instead of fixed sleep',
+//                 'Mock email service in tests'] }
+```
 
 ## API
 
