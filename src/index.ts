@@ -1,3 +1,5 @@
+export const VERSION = "1.2.0";
+
 export { boundaries } from "./boundaries";
 export { flaky } from "./flaky";
 export { analyzeTestFile } from "./analyze-file";
