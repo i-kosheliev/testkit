@@ -1,0 +1,17 @@
+name: QA Advisor
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  advise:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+      - uses: i-kosheliev/qa-advisor-action@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          min-priority: should-test
