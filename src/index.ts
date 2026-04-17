@@ -1,6 +1,6 @@
 export const VERSION = "1.2.0";
 
-const DEPRECATED_FUNCTIONS = new Set(["coverage", "suggest"]);
+const DEPRECATED_FUNCTIONS: ReadonlySet<string> = new Set(["coverage", "suggest"]);
 
 export function isDeprecated(name: string): boolean {
   if (typeof name !== "string" || name.length === 0) {
