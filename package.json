@@ -1,7 +1,7 @@
 {
   "name": "@iklab/testkit",
   "version": "1.2.0",
-  "description": "Test quality toolkit — boundary values, flakiness prediction, duplicate detection, static test scanner.",
+  "description": "Test quality toolkit — boundary values, flakiness prediction, duplicate detection, runtime deprecation checks, static test scanner.",
   "author": "Ihor Kosheliev",
   "license": "MIT",
   "repository": {
