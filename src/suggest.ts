@@ -23,7 +23,23 @@ const GENERIC: string[] = [
   "Consider error handling: what if the operation fails?",
 ];
 
+let deprecationWarned = false;
+
+/**
+ * @deprecated Since v1.2.0. Keyword-to-generic-advice mapping produces
+ * suggestions that are too generic to be actionable. Will be removed in v2.0.
+ * Use an LLM-backed suggestion service (e.g. CasePilot's score-requirements)
+ * for real test-design feedback.
+ */
 export function suggest(description: string): SuggestionResult {
+  if (!deprecationWarned && typeof process !== "undefined" && process.env?.NODE_ENV !== "test") {
+    deprecationWarned = true;
+    console.warn(
+      "[@iklab/testkit] suggest() is deprecated and will be removed in v2.0. " +
+        "Keyword-based suggestions are too generic for real use. " +
+        "See release notes for v1.2.0."
+    );
+  }
   if (typeof description !== "string" || description.trim().length === 0) {
     return { suggestions: GENERIC, score: GENERIC.length };
   }

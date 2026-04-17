@@ -190,6 +190,33 @@ flaky('Calculate sum of two numbers')
 
 **Risk patterns:** Timing, External API, Database, File I/O, Network, Concurrency, UI animation, Email/notification, Date/time, Random/generated, Environment
 
+### `analyzeTestFile()` — File-level Flakiness with Structural Evidence
+
+Deeper flakiness analysis on **actual source code**, not just a title. Requires BOTH a keyword match AND structural evidence (real import, function call, etc.) — so mentioning "email" in a comment no longer triggers an email-risk flag.
+
+```ts
+import fs from 'node:fs';
+import { analyzeTestFile } from '@iklab/testkit';
+
+const source = fs.readFileSync('./tests/user.spec.ts', 'utf8');
+const result = analyzeTestFile(source);
+
+// { score: 6,
+//   risks: [
+//     { label: 'Network / external API', weight: 2,
+//       evidence: 'Makes real HTTP call: axios.get("https://api..."' },
+//     { label: 'Fixed sleep/timeout', weight: 3,
+//       evidence: 'Uses fixed-duration wait: setTimeout(r, 500)' }
+//   ] }
+
+if (result.score >= 6) {
+  console.warn(`High-risk test file (${result.score}/10)`);
+  for (const r of result.risks) console.warn(`  ${r.label}: ${r.evidence}`);
+}
+```
+
+Use `flaky(title)` **before** writing the test (pre-flight on a description). Use `analyzeTestFile(content)` **after** it's written to catch real structural smells — `Promise.all`, `Date.now()`, `Math.random()`, real HTTP clients, ORM imports, and more.
+
 ### `testEach()` — Generate test.each Arrays
 
 Transform `boundaries()` output into ready-made `test.each` arrays for Jest, Vitest, or Playwright.
@@ -234,7 +261,9 @@ detectDuplicates([
 
 Options: `{ threshold?: number, ignoreCase?: boolean, stopWords?: string[] }`
 
-### `coverage()` — Requirements Coverage Check
+### `coverage()` — Requirements Coverage Check **[DEPRECATED — removal in v2.0]**
+
+> **Deprecated in v1.2.0.** Jaccard-similarity matching produces too many false positives to be reliable. Pair test IDs to requirement IDs explicitly in your test titles or metadata instead. Will be removed in v2.0.
 
 Check if your tests cover all requirements. Uses text similarity to match test descriptions against requirement statements.
 
@@ -254,7 +283,9 @@ const result = coverage(
 
 Options: `{ threshold?: number }` — similarity threshold (0-1, default 0.3)
 
-### `suggest()` — Test Improvement Suggestions
+### `suggest()` — Test Improvement Suggestions **[DEPRECATED — removal in v2.0]**
+
+> **Deprecated in v1.2.0.** Keyword-to-advice mapping produces suggestions too generic to be actionable. For real test-design feedback use an LLM-backed service (e.g. CasePilot's Requirements Quality scoring). Will be removed in v2.0.
 
 Analyze a test description and get suggestions for missing scenarios. Detects 12 patterns: CRUD operations, auth, file uploads, payments, pagination, concurrency.
 

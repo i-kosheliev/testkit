@@ -1,10 +1,26 @@
 import type { CoverageResult, CoverageMapping } from "./types";
 
+let deprecationWarned = false;
+
+/**
+ * @deprecated Since v1.2.0. This heuristic (Jaccard similarity on tokenized
+ * strings) produces too many false positives to be reliable. Will be removed
+ * in v2.0. If you need requirements coverage, pair test IDs to requirement
+ * IDs explicitly in your test titles / metadata.
+ */
 export function coverage(
   tests: string[],
   requirements: string[],
   options?: { threshold?: number }
 ): CoverageResult {
+  if (!deprecationWarned && typeof process !== "undefined" && process.env?.NODE_ENV !== "test") {
+    deprecationWarned = true;
+    console.warn(
+      "[@iklab/testkit] coverage() is deprecated and will be removed in v2.0. " +
+        "Jaccard-similarity coverage matching is too unreliable for real-world use. " +
+        "See release notes for v1.2.0."
+    );
+  }
   const threshold = Math.max(0, Math.min(1, options?.threshold ?? 0.3));
 
   if (!Array.isArray(tests) || !Array.isArray(requirements)) {
